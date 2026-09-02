@@ -1,6 +1,6 @@
 # Nimbus support agent
 
-LangGraph customer-support clerk for a **fake SaaS** called Nimbus. It answers
+LangGraph customer-support clerk for a SaaS called Nimbus. It answers
 from the help center with citations, remembers the thread, looks up fake orders,
 and files a real ticket when it should not guess. It never sends money.
 
