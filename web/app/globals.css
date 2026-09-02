@@ -1,0 +1,74 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0f1419;
+  color: #e8eef4;
+  font: 15px/1.45 system-ui, sans-serif;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  height: 100%;
+}
+
+aside, .inbox {
+  background: #171d24;
+  border-right: 1px solid #2a343e;
+  padding: 20px;
+  overflow: auto;
+}
+
+.inbox { border-right: 0; border-left: 1px solid #2a343e; }
+
+.brand { font-size: 18px; margin: 0 0 4px; }
+.sub { color: #8b9aab; font-size: 13px; margin: 0 0 20px; }
+h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #8b9aab; }
+
+button {
+  background: #1e262e;
+  color: #e8eef4;
+  border: 1px solid #2a343e;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+button.primary { background: #3d8bfd; border-color: #3d8bfd; color: #fff; }
+
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+main { display: flex; flex-direction: column; min-width: 0; }
+.log { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.msg { max-width: 72%; padding: 12px 14px; border-radius: 12px; white-space: pre-wrap; }
+.msg.human { align-self: flex-end; background: #3d8bfd; color: #fff; }
+.msg.ai { align-self: flex-start; background: #1e262e; border: 1px solid #2a343e; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font-size: 12px; color: #3dd68c; border: 1px solid #3dd68c; border-radius: 999px; padding: 2px 8px; }
+.meta { font-size: 12px; color: #8b9aab; margin-top: 6px; }
+
+.composer { display: flex; gap: 8px; padding: 16px 24px; border-top: 1px solid #2a343e; }
+.composer input {
+  flex: 1;
+  background: #1e262e;
+  border: 1px solid #2a343e;
+  color: #e8eef4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.ticket { padding: 12px 0; border-bottom: 1px solid #2a343e; display: block; width: 100%; text-align: left; background: transparent; }
+.ticket span { color: #8b9aab; font-size: 12px; }
+.ticket.active { background: #1e262e; }
+.stage { color: #f0b429; font-size: 13px; margin-top: 16px; }
+.detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid #2a343e; }
+.turn, .note { font-size: 13px; margin: 8px 0; color: #c5d0da; }
+.turn span { display: block; color: #8b9aab; font-size: 11px; text-transform: uppercase; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+}

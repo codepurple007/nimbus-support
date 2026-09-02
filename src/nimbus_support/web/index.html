@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nimbus support</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #171d24;
+      --panel-2: #1e262e;
+      --line: #2a343e;
+      --text: #e8eef4;
+      --muted: #8b9aab;
+      --accent: #3d8bfd;
+      --ok: #3dd68c;
+      --warn: #f0b429;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+    body { display: grid; grid-template-columns: 240px 1fr 320px; }
+    aside, .inbox { background: var(--panel); border-right: 1px solid var(--line); padding: 20px; }
+    .inbox { border-right: 0; border-left: 1px solid var(--line); overflow: auto; }
+    h1, h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0 0 12px; }
+    .brand { font-size: 18px; color: var(--text); letter-spacing: 0; text-transform: none; margin-bottom: 4px; }
+    .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    button, .file {
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 8px; padding: 8px 12px; cursor: pointer; font: inherit;
+    }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:hover { filter: brightness(1.08); }
+    main { display: flex; flex-direction: column; min-width: 0; }
+    #log { flex: 1; overflow: auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+    .msg { max-width: 72%; padding: 12px 14px; border-radius: 12px; white-space: pre-wrap; }
+    .msg.human { align-self: flex-end; background: var(--accent); color: #fff; }
+    .msg.ai { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip { font-size: 12px; color: var(--ok); border: 1px solid var(--ok); border-radius: 999px; padding: 2px 8px; }
+    .meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    form.composer { display: flex; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--line); }
+    form.composer input { flex: 1; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 10px 12px; font: inherit; }
+    .ticket { padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; background: none; width: 100%; text-align: left; display: block; }
+    .ticket strong { display: block; }
+    .ticket span { color: var(--muted); font-size: 12px; }
+    .ticket.active { background: var(--panel-2); }
+    .stage { color: var(--warn); font-size: 13px; margin-top: 16px; }
+    .detail { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .turn { font-size: 13px; margin: 8px 0; color: #c5d0da; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    @media (max-width: 900px) {
+      body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+      aside, .inbox { border: 0; border-bottom: 1px solid var(--line); }
+      .inbox { max-height: 220px; }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1 class="brand">Nimbus</h1>
+    <p class="sub">Support desk. Refunds wait for a human. The agent cannot send money.</p>
+    <div class="row">
+      <button type="button" id="escalate">Talk to a human</button>
+      <button type="button" id="reset">New session</button>
+    </div>
+    <p class="sub" style="margin-top:20px">Knowledge connectors</p>
+    <div class="row">
+      <button type="button" id="sync">Sync Drive / Sheets</button>
+    </div>
+    <input class="file" type="file" id="file" accept=".md,.csv,.pdf" />
+    <p class="stage" id="stage"></p>
+  </aside>
+  <main>
+    <div id="log"></div>
+    <form class="composer" id="form">
+      <input id="input" autocomplete="off" placeholder="Ask about passwords, refunds, shipping, or an order like #1042" />
+      <button class="primary" type="submit">Send</button>
+    </form>
+  </main>
+  <section class="inbox">
+    <h2>Ticket inbox</h2>
+    <div id="tickets">Loading…</div>
+    <div id="detail"></div>
+  </section>
+  <script>
+    const sessionKey = "nimbus.sessionId";
+    const log = document.getElementById("log");
+    const ticketsEl = document.getElementById("tickets");
+    const detailEl = document.getElementById("detail");
+    const input = document.getElementById("input");
+    const stageEl = document.getElementById("stage");
+
+    function sessionId() {
+      let id = localStorage.getItem(sessionKey);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(sessionKey, id);
+      }
+      return id;
+    }
+
+    function bubble(role, text, extra) {
+      const el = document.createElement("div");
+      el.className = "msg " + role;
+      el.textContent = text;
+      if (extra) el.appendChild(extra);
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function extras(data) {
+      const wrap = document.createElement("div");
+      if (data.citations && data.citations.length) {
+        const chips = document.createElement("div");
+        chips.className = "chips";
+        for (const c of data.citations) {
+          const chip = document.createElement("span");
+          chip.className = "chip";
+          chip.textContent = c.slug;
+          chips.appendChild(chip);
+        }
+        wrap.appendChild(chips);
+      }
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = [data.route, data.ticket_id].filter(Boolean).join(" · ");
+      wrap.appendChild(meta);
+      return wrap;
+    }
+
+    async function readSse(res, onNode) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let donePayload = null;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+        for (const block of parts) {
+          let event = "message";
+          let data = "";
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event: ")) event = line.slice(7).trim();
+            if (line.startsWith("data: ")) data += line.slice(6);
+          }
+          if (!data) continue;
+          const parsed = JSON.parse(data);
+          if (event === "node") onNode(parsed.node);
+          if (event === "error") throw new Error(parsed.detail || "Stream failed");
+          if (event === "done") donePayload = parsed;
+        }
+      }
+      if (!donePayload) throw new Error("Stream ended without an answer");
+      return donePayload;
+    }
+
+    async function send(text) {
+      bubble("human", text);
+      input.value = "";
+      stageEl.textContent = "Running…";
+      try {
+        const res = await fetch("/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sessionId(), chatInput: text }),
+        });
+        const data = await readSse(res, (node) => {
+          stageEl.textContent = "Running " + node + "…";
+        });
+        bubble("ai", data.output || "", extras(data));
+      } catch (err) {
+        bubble("ai", err.message || "Request failed");
+      }
+      stageEl.textContent = "";
+      loadTickets();
+    }
+
+    async function loadHistory() {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionId(), action: "loadPreviousSession" }),
+      });
+      const data = await res.json();
+      for (const msg of data.data || []) {
+        bubble(msg.role === "human" ? "human" : "ai", msg.content);
+      }
+    }
+
+    async function loadTickets() {
+      const res = await fetch("/api/tickets?all=true");
+      const rows = await res.json();
+      ticketsEl.innerHTML = "";
+      if (!rows.length) {
+        ticketsEl.textContent = "No tickets.";
+        return;
+      }
+      for (const row of rows.slice().reverse()) {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = "ticket";
+        el.innerHTML = `<strong>${row.id}</strong><span>${row.route} · ${row.status}</span><div>${row.query}</div>`;
+        el.addEventListener("click", () => openTicket(row.id));
+        ticketsEl.appendChild(el);
+      }
+    }
+
+    async function openTicket(id) {
+      const res = await fetch("/api/tickets/" + id);
+      const row = await res.json();
+      const actions = [];
+      if (row.route === "refund_request" && row.status === "pending_approval") {
+        actions.push(`<button class="primary" data-act="approve_refund">Approve refund</button>`);
+        actions.push(`<button data-act="deny_refund">Deny</button>`);
+      }
+      if (row.status === "open" || row.status === "pending_approval") {
+        actions.push(`<button data-act="resolve">Resolve</button>`);
+      }
+      const turns = (row.transcript || [])
+        .map((t) => `<div class="turn"><strong>${t.role}</strong> ${t.content}</div>`)
+        .join("");
+      detailEl.innerHTML = `<div class="detail"><h2>${row.id}</h2><p class="sub">${row.summary || ""}</p>${turns}<div class="row">${actions.join("")}</div></div>`;
+      detailEl.querySelectorAll("button[data-act]").forEach((btn) => {
+        btn.addEventListener("click", () => act(id, btn.getAttribute("data-act")));
+      });
+    }
+
+    async function act(id, action) {
+      await fetch("/api/tickets/" + id + "/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      loadTickets();
+      openTicket(id);
+    }
+
+    document.getElementById("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (text) send(text);
+    });
+    document.getElementById("escalate").addEventListener("click", () => send("I want to talk to a human"));
+    document.getElementById("reset").addEventListener("click", () => {
+      localStorage.removeItem(sessionKey);
+      log.innerHTML = "";
+      loadHistory();
+    });
+    document.getElementById("sync").addEventListener("click", async () => {
+      const res = await fetch("/api/sync", { method: "POST" });
+      const data = await res.json();
+      bubble("ai", res.ok ? `Synced ${data.copied.length} files, indexed ${data.indexed} chunks.` : (data.detail || "Sync failed"));
+    });
+    document.getElementById("file").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/ingest", { method: "POST", body });
+      const data = await res.json();
+      bubble("ai", res.ok ? `Indexed ${data.indexed} chunks from ${data.file}.` : (data.detail || "Ingest failed"));
+    });
+
+    loadHistory();
+    loadTickets();
+  </script>
+</body>
+</html>

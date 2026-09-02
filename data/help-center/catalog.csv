@@ -1,0 +1,5 @@
+sku,name,price_usd,warranty_months,in_stock,notes
+NIM-HUB,Nimbus Hub,129,12,true,Main hub. Pairs with the Nimbus web app.
+NIM-KEY,Nimbus Security Key,49,24,true,Hardware 2FA key. Optional.
+NIM-CABLE,USB-C cable 2m,12,6,true,Replacement cable for the Hub.
+NIM-MOUNT,Desk mount,29,12,false,Backordered. Ships when restocked.
