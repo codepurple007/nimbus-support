@@ -86,8 +86,4 @@ export PYTHONPATH=src
 pytest -q
 ```
 
-## What this is not
 
-Not multi-tenant, not on the public internet, not a paid help desk, not automatic
-payouts. Nimbus is sample content so a client can see the graph before you load
-their docs.
