@@ -20,3 +20,5 @@ build/
 .ruff_cache/
 web/node_modules/
 web/.next/
+web/.env.local
+.env.local

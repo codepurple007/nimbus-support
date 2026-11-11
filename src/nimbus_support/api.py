@@ -16,7 +16,7 @@ from nimbus_support.graph.builder import build_graph
 from nimbus_support.graph.generate import make_llm_client
 from nimbus_support.kb.ingest import ingest_help_center
 from nimbus_support.kb.retrieve import load_retriever
-from nimbus_support.memory import WindowBufferStore
+from nimbus_support.memory import WindowBufferStore, PgChatMemory
 from nimbus_support.orders import OrderStore
 from nimbus_support.pii import redact
 from nimbus_support.tickets import Ticket, TicketStore, make_ticket_store
@@ -53,7 +53,12 @@ def build_runtime() -> Runtime:
     settings = get_settings()
     retriever = load_retriever(settings=settings)
     llm = make_llm_client(settings)
-    memory = WindowBufferStore(settings.sessions_path, k=settings.context_window_length)
+    
+    if settings.retrieval_backend == "pgvector":
+        memory = PgChatMemory(settings.database_url, k=settings.context_window_length)
+    else:
+        memory = WindowBufferStore(settings.sessions_path, k=settings.context_window_length)
+        
     tickets = make_ticket_store(settings)
     graph = build_graph(
         retriever,
@@ -202,12 +207,28 @@ def create_app(runtime: Runtime | None = None) -> FastAPI:
         return {"indexed": len(chunks), "file": path.name}
 
     @api.post("/api/sync")
-    def sync_knowledge(_: None = Depends(require_admin)):
+    def sync_knowledge(authorization: str | None = Header(default=None)):
+        require_admin(authorization)
         settings = get_settings()
         written = sync_connectors(settings)
         chunks = ingest_help_center(settings)
         reload_index()
         return {"copied": [path.name for path in written], "indexed": len(chunks)}
+
+    @api.get("/api/items")
+    def list_items():
+        settings = get_settings()
+        if settings.retrieval_backend != "pgvector":
+            return [
+                {"name": "Nimbus Cloud Pro (Mock)", "price": 49.99},
+                {"name": "Nimbus Storage (Mock)", "price": 19.99}
+            ]
+        import psycopg
+        with psycopg.connect(settings.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT name, description, price, category, stock FROM items")
+                cols = [d[0] for d in cur.description]
+                return [dict(zip(cols, row)) for row in cur.fetchall()]
 
     return api
 

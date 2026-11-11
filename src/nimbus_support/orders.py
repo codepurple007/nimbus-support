@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
+
+from nimbus_support.db import get_db_conn
+
+logger = logging.getLogger(__name__)
 
 # Matches n8n HTTP Request Tool style: look up by id, never invent a row.
 _ORDER_ID = re.compile(

@@ -7,6 +7,7 @@
     "start": "next start --port 3000"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.22",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

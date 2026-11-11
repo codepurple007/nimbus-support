@@ -48,14 +48,13 @@ Use **one session** for 1–2. Then open the ticket inbox on the right.
 
 `search` is an index debugger (always prints nearest chunks). `ask` is the product.
 
-## Phase 2 (what was added)
+## Neon PostgreSQL & Clerk Auth
 
-- **Human inbox** — thread summary, transcript, resolve / approve / deny refund
-- **Knowledge connectors** — local Drive folder + Sheets CSV; optional Google APIs
-- **URL ingest** — `POST /api/ingest-url` (https only, private hosts blocked)
-- **Graph streaming** — `POST /chat/stream` emits each node, then the final answer
-- **PII redaction** — emails/phones stripped from Langfuse traces
-- **Zendesk sink** — optional copy of filed tickets; JSON file stays source of truth
+This project now supports **Neon PostgreSQL** for production-grade storage and **Clerk** for user authentication.
+
+1.  **Database**: Set `DATABASE_URL` in `.env` to your Neon connection string. Run `psql $DATABASE_URL -f sql/app_schema.sql` to initialize the tables.
+2.  **Auth**: Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in `.env`.
+3.  **Knowledge**: The agent can now sync from a **Google Doc** folder. Set `GOOGLE_DRIVE_FOLDER_ID` and your service account/token in `.env`.
 
 Approving a refund queues a human decision. There is no Stripe call.
 
